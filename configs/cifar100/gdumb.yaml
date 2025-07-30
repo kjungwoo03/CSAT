@@ -1,0 +1,7 @@
+hidden_size: 512
+mem_size: 44000
+hidden_layers: 3
+epochs: 32
+dropout: 0.0
+learning_rate: 0.1
+train_mb_size: 128

@@ -1,0 +1,6 @@
+hidden_size: 400
+hidden_layers: 2
+epochs: 10
+dropout: 0.0
+learning_rate: 0.001
+train_mb_size: 16

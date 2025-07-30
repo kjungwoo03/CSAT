@@ -1,0 +1,16 @@
+avalanche-lib
+torchattacks
+wandb==0.10.32
+numpy==1.24.3
+protobuf==3.20.1
+scikit-image
+openpyxl
+numpy
+matplotlib
+pandas
+torch
+torchvision
+tqdm
+wandb
+seaborn
+opencv-python

@@ -1,0 +1,5 @@
+mem_size: 1000
+lr: 0.1
+temp: 0.1
+train_mb_size: 10
+batch_size_mem: 10

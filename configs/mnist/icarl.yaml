@@ -1,0 +1,8 @@
+batch_size: 64              # MNIST는 가볍기 때문에 64~128 가능, 더 안정적인 학습을 위해 64 추천
+nb_exp: 5                   # 10클래스를 2개씩 나누는 SplitMNIST 기준
+memory_size: 500            # iCaRL 버퍼는 상대적으로 줄여도 됨 (exemplar 수는 적정 수준 유지)
+epochs: 16                  # 복잡하지 않은 구조로도 성능이 빠르게 수렴하므로 epoch 축소
+lr_base: 0.01               # 작은 모델과 데이터셋이므로 지나치게 큰 learning rate는 수렴 불안정
+lr_milestones: [10, 15]     # 전체 epoch 20 기준에서 적절한 decay point
+lr_factor: 5                # 기존과 동일하게 decay factor 유지
+weight_decay: 0.0001        # 일반적으로 더 작은 모델일수록 약간의 regularization 강화
