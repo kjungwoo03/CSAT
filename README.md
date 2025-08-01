@@ -1,6 +1,6 @@
 # Exploring Cross-Stage Adversarial Transferability in Class-Incremental Continual Learning (MMSP 2025)
 
-Official repository of CSAT | [paper](TBD) [arxiv](TBD)
+Official repository of CSAT
 
 [Jungwoo Kim](https://kjungwoo03.github.io), [Jong-Seok Lee](https://mcml.yonsei.ac.kr/)  
 
