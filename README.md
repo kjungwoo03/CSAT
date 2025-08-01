@@ -1,4 +1,4 @@
-# Exploring Cross-Stage Adversarial Transferability in Class-Incremental Continual Learning
+# Exploring Cross-Stage Adversarial Transferability in Class-Incremental Continual Learning (MMSP 2025)
 
 Official repository of CSAT
 
