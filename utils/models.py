@@ -1,14 +1,14 @@
-# models/resnet32.py
 import torch.nn as nn
 import torch.nn.functional as F
 from avalanche.models import MultiHeadClassifier, MultiTaskModule, BaseModel
 
 def conv3x3(in_planes, out_planes, stride=1):
+    """3×3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=1, bias=False)
 
-
 class BasicBlock(nn.Module):
+    """Basic residual block for ResNet"""
     expansion = 1
 
     def __init__(self, in_planes, planes, stride=1):
@@ -30,8 +30,8 @@ class BasicBlock(nn.Module):
         out += self.shortcut(x)
         return F.relu(out)
 
-
 class ResNet32(nn.Module):
+    """ResNet-32 model implementation"""
     def __init__(self, num_classes=100):
         super().__init__()
         self.in_planes = 16
@@ -60,38 +60,24 @@ class ResNet32(nn.Module):
         out = out.view(out.size(0), -1)
         return self.linear(out)
 
-
-# ────────────────────── 공통 유틸 ──────────────────────
-def conv3x3(in_planes, out_planes, stride=1):
-    """3×3 convolution with padding"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3,
-                     stride=stride, padding=1, bias=False)
-
-
 def conv1x1(in_planes, out_planes, stride=1):
     """1×1 convolution"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=1,
                      stride=stride, bias=False)
 
-
-# ───────────────────── Bottleneck 블록 ─────────────────────
 class Bottleneck(nn.Module):
-    """ResNet Bottleneck (출력 채널 = planes × expansion)"""
+    """ResNet Bottleneck block with expansion factor 4"""
     expansion = 4
 
     def __init__(self, in_planes, planes, stride=1):
         super().__init__()
-        # 1×1 ↓차원축소
         self.conv1 = conv1x1(in_planes, planes)
         self.bn1   = nn.BatchNorm2d(planes)
-        # 3×3
         self.conv2 = conv3x3(planes, planes, stride)
         self.bn2   = nn.BatchNorm2d(planes)
-        # 1×1 ↑차원확장
         self.conv3 = conv1x1(planes, planes * self.expansion)
         self.bn3   = nn.BatchNorm2d(planes * self.expansion)
 
-        # shortcut (identity or 1×1 conv matching shape)
         self.shortcut = nn.Sequential()
         if stride != 1 or in_planes != planes * self.expansion:
             self.shortcut = nn.Sequential(
@@ -106,41 +92,26 @@ class Bottleneck(nn.Module):
         out += self.shortcut(x)
         return F.relu(out)
 
-
-# ───────────────────── ResNet-50 (Tiny용) ─────────────────────
 class ResNet50Tiny(nn.Module):
-    """
-    •  입력: 3×64×64  
-    •  conv1: 3×3 stride 1 (TinyImageNet에 맞춰 downsampling 최소화)  
-    •  layer 구성: [3, 4, 6, 3] Bottleneck  
-    •  최종 FC: num_classes (=200)
-    """
+    """ResNet-50 adapted for TinyImageNet with input size 3×64×64"""
     def __init__(self, num_classes: int = 200):
         super().__init__()
         self.in_planes = 64
 
-        # conv1 (64 → 64, 그대로)  ─────────────
-        # TinyImageNet은 작기 때문에 7×7 stride 2 대신 3×3 stride 1
         self.conv1 = conv3x3(3, 64, stride=1)
         self.bn1   = nn.BatchNorm2d(64)
-        # ↓ 원본 ResNet 구조를 쓰려면 아래 두 줄을 활성화
-        # self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
-        # self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.maxpool = nn.Identity()   # max-pool 생략
+        self.maxpool = nn.Identity()
 
-        # 4개의 스테이지 ─────────────
-        self.layer1 = self._make_layer(planes=64,  blocks=3, stride=1)  # 64×64
-        self.layer2 = self._make_layer(planes=128, blocks=4, stride=2)  # 32×32
-        self.layer3 = self._make_layer(planes=256, blocks=6, stride=2)  # 16×16
-        self.layer4 = self._make_layer(planes=512, blocks=3, stride=2)  # 8×8
+        self.layer1 = self._make_layer(planes=64,  blocks=3, stride=1)
+        self.layer2 = self._make_layer(planes=128, blocks=4, stride=2)
+        self.layer3 = self._make_layer(planes=256, blocks=6, stride=2)
+        self.layer4 = self._make_layer(planes=512, blocks=3, stride=2)
 
         self.bn_final = nn.BatchNorm2d(512 * Bottleneck.expansion)
         self.avgpool  = nn.AdaptiveAvgPool2d((1, 1))
         self.fc       = nn.Linear(512 * Bottleneck.expansion, num_classes)
 
-    # ───────────────── make_layer helper ─────────────────
     def _make_layer(self, planes, blocks, stride):
-        """planes: 내부 채널(축소 전), blocks: Bottleneck 개수"""
         strides = [stride] + [1] * (blocks - 1)
         layers  = []
         for s in strides:
@@ -148,24 +119,20 @@ class ResNet50Tiny(nn.Module):
             self.in_planes = planes * Bottleneck.expansion
         return nn.Sequential(*layers)
 
-    # ───────────────── forward ─────────────────
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
         out = self.maxpool(out)
-
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)
         out = self.layer4(out)
-
         out = F.relu(self.bn_final(out))
         out = self.avgpool(out)
         out = out.view(out.size(0), -1)
         return self.fc(out)
-    
-    
 
 class MultiHeadMLP(MultiTaskModule):
+    """Multi-head MLP for multi-task learning"""
     def __init__(self, input_size=28 * 28, hidden_size=256, hidden_layers=2,
                  drop_rate=0, relu_act=True):
         super().__init__()
@@ -191,14 +158,10 @@ class MultiHeadMLP(MultiTaskModule):
         x = self.classifier(x, task_labels)
         return x
 
-
 class MLP(nn.Module, BaseModel):
+    """Basic MLP with optional incremental classifier"""
     def __init__(self, input_size=28 * 28, hidden_size=256, hidden_layers=2,
                  output_size=10, drop_rate=0, relu_act=True, initial_out_features=0):
-        """
-        :param initial_out_features: if >0 override output size and build an
-            IncrementalClassifier with `initial_out_features` units as first.
-        """
         super().__init__()
         self._input_size = input_size
 
@@ -232,8 +195,8 @@ class MLP(nn.Module, BaseModel):
         x = x.view(x.size(0), self._input_size)
         return self.features(x)
 
-
 class SI_CNN(MultiTaskModule):
+    """CNN architecture for Synaptic Intelligence"""
     def __init__(self, hidden_size=512):
         super().__init__()
         layers = nn.Sequential(*(nn.Conv2d(in_channels=3, out_channels=32, kernel_size=(3, 3), padding=(1, 1)),
@@ -261,20 +224,18 @@ class SI_CNN(MultiTaskModule):
         x = self.classifier(x, task_labels)
         return x
 
-
 class FlattenP(nn.Module):
-    '''A nn-module to flatten a multi-dimensional tensor to 2-dim tensor.'''
-
+    """Module to flatten multi-dimensional tensor to 2D"""
     def forward(self, x):
-        batch_size = x.size(0)   # first dimenstion should be batch-dimension.
+        batch_size = x.size(0)
         return x.view(batch_size, -1)
 
     def __repr__(self):
         tmpstr = self.__class__.__name__ + '()'
         return tmpstr
 
-
 class MLP_gss(nn.Module):
+    """MLP implementation for Gradient Similarity Search"""
     def __init__(self, sizes, bias=True):
         super(MLP_gss, self).__init__()
         layers = []
@@ -290,42 +251,35 @@ class MLP_gss(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+
 class FeatureExtractorMLP(nn.Module):
+    """MLP-based feature extractor with classification head"""
     def __init__(self, input_size=28*28, hidden_size=512, hidden_layers=3, output_size=10, drop_rate=0.2, relu_act=True):
-        """
-        SingleHeadReducedResNet18과 동일한 기능을 수행하는 FeatureExtractorMLP 모델
-        """
         super().__init__()
-        self._input_size = input_size  # 입력 크기 (MNIST: 28x28 → 784)
-        self.feature_size = hidden_size  # 특징 벡터 크기 (512)
+        self._input_size = input_size
+        self.feature_size = hidden_size
 
         layers = []
-        layers.append(nn.Linear(input_size, hidden_size))  # 첫 번째 FC 레이어
+        layers.append(nn.Linear(input_size, hidden_size))
         layers.append(nn.ReLU(inplace=True) if relu_act else nn.Tanh())
         layers.append(nn.Dropout(p=drop_rate))
 
-        # Hidden layers 추가
         for _ in range(hidden_layers - 1):
             layers.append(nn.Linear(hidden_size, hidden_size))
             layers.append(nn.ReLU(inplace=True) if relu_act else nn.Tanh())
             layers.append(nn.Dropout(p=drop_rate))
 
-        self.feature_extractor = nn.Sequential(*layers)  # Feature Extractor 부분
-
-        # 🔹 Single-head Classifier 추가 (ResNet과 동일한 구조)
+        self.feature_extractor = nn.Sequential(*layers)
         self.classifier = nn.Linear(hidden_size, output_size)
 
     def forward(self, x):
-        x = x.view(x.size(0), -1)  # Flatten (이미지 → 1D 벡터 변환)
-        features = self.feature_extractor(x)  # Feature Extractor 통과
-        logits = self.classifier(features)  # Classification
+        x = x.view(x.size(0), -1)
+        features = self.feature_extractor(x)
+        logits = self.classifier(features)
         return logits
 
     def get_features(self, x):
-        """ Feature Extractor 역할 수행 (512-D 특징 벡터 반환) """
-        x = x.view(x.size(0), -1)  # Flatten
+        x = x.view(x.size(0), -1)
         return self.feature_extractor(x)
-
-
 
 __all__ = ['MultiHeadMLP', 'MLP', 'SI_CNN', 'MLP_gss', 'FeatureExtractorMLP']

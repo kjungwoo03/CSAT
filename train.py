@@ -10,9 +10,9 @@ import avalanche as avl
 import yaml
 import os
 import numpy as np
-from utils import set_seed, create_default_args
 
-from reduced_resnet18 import MultiHeadReducedResNet18, SingleHeadReducedResNet18
+from utils.util import *
+from utils.models import *
 
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -32,23 +32,24 @@ def main(args):
             (0.2675, 0.2565, 0.2761) 
         )
     ])
-    
+        
     benchmark = avl.benchmarks.SplitCIFAR100(
         n_experiences=10,
         return_task_id=False,
-        fixed_class_order=list(range(100)),
         seed=args.seed,
+        fixed_class_order=list(range(100)),
+        shuffle=True,
         train_transform=train_transform,
-        eval_transform=test_transform,
     )
     
     configs = yaml.load(open(f"configs/{args.dataset}/{args.method}.yaml", "r"), Loader=yaml.FullLoader)
     configs = create_default_args(configs, args)
     
-    model = SingleHeadReducedResNet18(100)
-    optimizer = SGD(model.parameters(), lr=configs.lr)
+    model = avl.models.SlimResNet18(
+        benchmark.n_classes
+    ).to(device)
+        
     criterion = CrossEntropyLoss()
-    plugins = []
     
     loggers = [
         avl.logging.TensorboardLogger(),
@@ -65,22 +66,21 @@ def main(args):
         loggers=loggers
     )
     
-    cl_strategy = avl.training.ER_AML(
-        model=model,
-        feature_extractor=model.feature_extractor,
-        optimizer=optimizer,
-        plugins=plugins,
-        evaluator=eval_plugin,
-        device=device,
-        train_mb_size=configs.train_mb_size,
-        eval_mb_size=64,
-        mem_size=configs.mem_size,
-        batch_size_mem=configs.batch_size_mem,
+    cl_strategy = avl.training.GDumb(
+        model, 
+        SGD(model.parameters(), lr=configs.learning_rate), 
+        criterion,
+        mem_size=configs.mem_size,    
+        train_mb_size=configs.train_mb_size, 
+        train_epochs=configs.epochs, 
+        eval_mb_size=128,    
+        device=device, 
+        evaluator=eval_plugin
     )
     
     model_dir = f'./pretrained_models/{args.dataset}/{args.method}'
     os.makedirs(model_dir, exist_ok=True)
-    
+
     workersNum = 32
     results = []
     print(f"Starting Experiments...")
@@ -102,21 +102,14 @@ def main(args):
 
         print('Computing accuracy on the whole test set')
         results.append(cl_strategy.eval(benchmark.test_stream, num_workers=workersNum))
-        
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--dataset", type=str, default='cifar100')
-    parser.add_argument("--method", type=str, default='eraml')
+    parser.add_argument("--method", type=str, default='gdumb')
     return parser.parse_args()
 
-
 if __name__ == "__main__":
-    # parse arguments
     args = parse_args()
-    # set seed
-    set_seed(args.seed)
-    
     main(args)
-    

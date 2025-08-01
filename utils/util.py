@@ -36,26 +36,11 @@ def create_default_args(args_dict, args):
             configs.lr_milestones = args_dict['lr_milestones']
             configs.lr_factor = args_dict['lr_factor']
             configs.weight_decay = args_dict['weight_decay']
-        elif args.method == 'replay':
-            configs.hidden_size = args_dict['hidden_size']
-            configs.hidden_layers = args_dict['hidden_layers']
-            configs.epochs = args_dict['epochs']
-            configs.dropout = args_dict['dropout']
-            configs.learning_rate = args_dict['learning_rate']
-            configs.train_mb_size = args_dict['train_mb_size']
         elif args.method == 'erace':
             configs.mem_size = args_dict['mem_size']
             configs.lr = args_dict['lr']
             configs.train_mb_size = args_dict['train_mb_size']
             configs.batch_size_mem = args_dict['batch_size_mem']
-        elif args.method == 'lwf':
-            configs.lwf_alpha = args_dict['lwf_alpha']
-            configs.lwf_temperature = args_dict['lwf_temperature']
-            configs.epochs = args_dict['epochs']
-            configs.hidden_layers = args_dict['layers']
-            configs.hidden_size = args_dict['hidden_size']
-            configs.learning_rate = args_dict['learning_rate']
-            configs.train_mb_size = args_dict['train_mb_size']
         elif args.method == 'eraml':
             configs.mem_size = args_dict['mem_size']
             configs.lr = args_dict['lr']
@@ -91,14 +76,6 @@ def create_default_args(args_dict, args):
             configs.lr_milestones = args_dict['lr_milestones']
             configs.lr_factor = args_dict['lr_factor']
             configs.weight_decay = args_dict['weight_decay']
-        elif args.method == 'replay':
-            configs.num_epochs = args_dict['num_epochs']
-            configs.mem_size = args_dict['mem_size']
-            configs.momentum = args_dict['momentum']
-            configs.weight_decay = args_dict['weight_decay']
-            configs.lr = args_dict['lr']
-            configs.train_mb_size = args_dict['train_mb_size']
-            configs.batch_size_mem = args_dict['batch_size_mem']
         elif args.method == 'erace':
             configs.mem_size = args_dict['mem_size']
             configs.lr = args_dict['lr']
